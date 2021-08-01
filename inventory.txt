@@ -1,0 +1,10 @@
+1
+cycle
+Furnace Room
+true
+Trek10
+500
+03/22/1995
+Auroa cycle
+vintage bike
+D:\git\Home_Inventory_Management\Inventory Images\cycle.jpg
