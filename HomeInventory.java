@@ -9,6 +9,8 @@ import java.awt.geom.*;
 import java.io.*;
 import java.util.*;
 import java.text.*;
+import javax.swing.filechooser.*;
+import java.awt.print.*;
 
 class PhotoPanel extends JPanel
 {
@@ -85,9 +87,11 @@ public class HomeInventory extends JFrame
 
     int currentEntry;
 
-    final int maximumEntries = 300;
-    int numberEntries;
-    InventoryItem[] myInventory = new InventoryItem[maximumEntries];
+    static final int maximumEntries = 300;
+    static int numberEntries;
+    static InventoryItem[] myInventory = new InventoryItem[maximumEntries];
+    static final int entriesPerPage = 2;
+    static int lastpage;
 
     public static void main(String[] args) {
         //create frame
@@ -561,6 +565,8 @@ public class HomeInventory extends JFrame
         
     private void exitForm(WindowEvent evt)
     {
+        if (JOptionPane.showConfirmDialog(null, "Any unsaved changes will be lost.\nAre you sure you want to exit?", "Exit Program", JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE) == JOptionPane.NO_OPTION)
+            return;
         // write entries back to file
         try
         {
@@ -594,7 +600,7 @@ public class HomeInventory extends JFrame
     catch (Exception ex)
     {
     }
-        System.exit(0);
+    System.exit(0);
     }
     private void sizeButton(JButton b, Dimension d)
     {
@@ -604,20 +610,136 @@ public class HomeInventory extends JFrame
     }
     private void newButtonActionPerformed(ActionEvent e)
     {
+        checkSave();
+        blankValues();
+    }
+    private void deleteEntry(int j)
+    {
+        // delete entry j
+        if (j != numberEntries)
+        {
+            // move all entries under j up one level
+            for (int i = j; i < numberEntries; i++)
+            {
+                myInventory[i - 1] = new InventoryItem();
+                myInventory[i - 1] = myInventory[i];
+            }
+        }
+        numberEntries--;
     }
     private void deleteButtonActionPerformed(ActionEvent e)
     {
+        if (JOptionPane.showConfirmDialog(null, "Are you sure you want to delete this item?", "Delete Inventory Item", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.NO_OPTION)
+            return;
+        deleteEntry(currentEntry);
+        if (numberEntries == 0)
+        {
+            currentEntry = 0;
+            blankValues();
+        }
+        else
+        {
+            currentEntry--;
+            if (currentEntry == 0)
+                currentEntry = 1;
+            showEntry(currentEntry);
+        }
     }
     private void saveButtonActionPerformed(ActionEvent e)
     {
+        // check for description
+        itemTextField.setText(itemTextField.getText().trim());
+        if (itemTextField.getText().equals(""))
+        {
+            JOptionPane.showConfirmDialog(null, "Must have item description.", "Error",
+            JOptionPane.DEFAULT_OPTION, JOptionPane.ERROR_MESSAGE);
+            itemTextField.requestFocus();
+            return;
+        }
+        if (newButton.isEnabled())
+        {
+            // delete edit entry then resave
+            deleteEntry(currentEntry);
+        }
+        // capitalize first letter
+        String s = itemTextField.getText();
+        itemTextField.setText(s.substring(0, 1).toUpperCase() + s.substring(1));
+        numberEntries++;
+        // determine new current entry location based on description
+        currentEntry = 1;
+        if (numberEntries != 1)
+        {
+            do
+            {
+                if(itemTextField.getText().compareTo(myInventory[currentEntry - 1].description) < 0)
+                    break;
+                currentEntry++;
+            }while (currentEntry < numberEntries);
+        }
+        // move all entries below new value down one position unless at end
+        if (currentEntry != numberEntries)
+        {
+            for (int i = numberEntries; i >= currentEntry + 1; i--)
+            {
+                myInventory[i - 1] = myInventory[i - 2];
+                myInventory[i - 2] = new InventoryItem();
+            }
+        }
+        myInventory[currentEntry - 1] = new InventoryItem();
+        myInventory[currentEntry - 1].description = itemTextField.getText();
+        myInventory[currentEntry - 1].location = locationComboBox.getSelectedItem().toString();
+        myInventory[currentEntry - 1].marked = markedCheckBox.isSelected();
+        myInventory[currentEntry - 1].serialNumber = serialTextField.getText();
+        myInventory[currentEntry - 1].purchasePrice = priceTextField.getText();
+        myInventory[currentEntry - 1].purchaseDate = dateToString(dateDateChooser.getDate());
+        myInventory[currentEntry - 1].purchaseLocation = storeTextField.getText();
+        myInventory[currentEntry - 1].photoFile = photoTextArea.getText();
+        myInventory[currentEntry - 1].note = noteTextField.getText();
+        showEntry(currentEntry);
+        if (numberEntries < maximumEntries)
+            newButton.setEnabled(true);
+        else
+            newButton.setEnabled(false);
+        deleteButton.setEnabled(true);
+        printButton.setEnabled(true);
     }
+    private void checkSave()
+    {
+        boolean edited = false;
+        if (!myInventory[currentEntry - 1].description.equals(itemTextField.getText()))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].location.equals(locationComboBox.getSelectedItem().toString()))
+            edited = true;
+        else if (myInventory[currentEntry - 1].marked != markedCheckBox.isSelected())
+            edited = true;
+        else if (!myInventory[currentEntry - 1].serialNumber.equals(serialTextField.getText()))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].purchasePrice.equals(priceTextField.getText()))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].purchaseDate.equals(dateToString(dateDateChooser.getDate())))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].purchaseLocation.equals(storeTextField.getText()))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].note.equals(noteTextField.getText()))
+            edited = true;
+        else if (!myInventory[currentEntry - 1].photoFile.equals(photoTextArea.getText()))
+            edited = true;
+        if (edited)
+        {
+            if (JOptionPane.showConfirmDialog(null, "You have edited this item. Do you want to save the changes?", "Save Item", JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
+                saveButton.doClick();
+        }
+    }
+
     private void previousButtonActionPerformed(ActionEvent e)
     {
+        checkSave();
         currentEntry--;
         showEntry(currentEntry);
     }
     private void nextButtonActionPerformed(ActionEvent e)
     {
+        checkSave();
         currentEntry++;
         showEntry(currentEntry);
     }
@@ -630,10 +752,35 @@ public class HomeInventory extends JFrame
     }
     private void photoButtonActionPerformed(ActionEvent e)
     {
+        JFileChooser openChooser = new JFileChooser();
+        openChooser.setDialogType(JFileChooser.OPEN_DIALOG);
+        openChooser.setDialogTitle("Open Photo File");
+        openChooser.addChoosableFileFilter(new FileNameExtensionFilter("Photo Files","jpg"));
+        if (openChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
+            showPhoto(openChooser.getSelectedFile().toString());
     }
     private void searchButtonActionPerformed(ActionEvent e)
     {
+        int i;
+        if (numberEntries == 0)
+            return;
+        // search for item letter
+        String letterClicked = e.getActionCommand();
+        i = 0;
+        do
+        {
+            if (myInventory[i].description.substring(0, 1).equals(letterClicked))
+            {
+                currentEntry = i + 1;
+                showEntry(currentEntry);
+                return;
+            }
+            i++;
+        }
+        while (i < numberEntries);
+            JOptionPane.showConfirmDialog(null, "No " + letterClicked + " inventory items.","None Found", JOptionPane.DEFAULT_OPTION,JOptionPane.INFORMATION_MESSAGE);
     }
+
     private void itemTextFieldActionPerformed(ActionEvent e)
     {
         locationComboBox.requestFocus();
@@ -692,6 +839,28 @@ public class HomeInventory extends JFrame
         int d = dd.getDate();
         String dString = new DecimalFormat("00").format(d);
         return(mString + "/" + dString + "/" + yString);
+    }
+
+    private void blankValues()
+    {
+        // blank input screen
+        newButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        saveButton.setEnabled(true);
+        previousButton.setEnabled(false);
+        nextButton.setEnabled(false);
+        printButton.setEnabled(false);
+        itemTextField.setText("");
+        locationComboBox.setSelectedItem("");
+        markedCheckBox.setSelected(false);
+        serialTextField.setText("");
+        priceTextField.setText("");
+        dateDateChooser.setDate(new Date());
+        storeTextField.setText("");
+        noteTextField.setText("");
+        photoTextArea.setText("");
+        photoPanel.repaint();
+        itemTextField.requestFocus();
     }
 
     private void showPhoto(String photoFile)
