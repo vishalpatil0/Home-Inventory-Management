@@ -1,6 +1,6 @@
 /*
 Project Name: Home Invetory Management
-Name : Vishal Gajan Patil
+Name : Vishal Gajanan Patil
 Completed on: 3 August 2021
 */
 
